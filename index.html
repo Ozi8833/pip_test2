@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>WOS 時計同期 PoC v2 (見比べ特化)</title>
+  <title>WOS 時計同期 PoC v3 (最上段時計・縦スリム)</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; touch-action: manipulation; }
     body {
@@ -137,7 +137,7 @@
 
   <div class="card">
     <h2 style="color: #ffb700; font-size: 1.15rem; margin-bottom: 10px; text-align: center;">
-      ⏱️ WOS 時計同期 (見比べ特化スリム小窓)
+      ⏱️ WOS 時計同期 (最上段時計・スリム小窓)
     </h2>
 
     <!-- アプリ現在時刻 -->
@@ -147,7 +147,7 @@
     <div id="ui-offset-badge" class="offset-badge">現在の補正値: 0.0s (±0ms)</div>
 
     <!-- 1. 小窓起動ボタン -->
-    <button id="btn-pip-toggle" class="btn-main">📺 縦長スリム小窓 (PiP) を開く</button>
+    <button id="btn-pip-toggle" class="btn-main">📺 スリム小窓 (PiP) を開く</button>
 
     <!-- 2. 手動微調整ボタン (+-1秒、+-0.1秒) -->
     <div class="grid-btns">
@@ -174,15 +174,15 @@
     <!-- ガイド説明 -->
     <div class="guide-box">
       <b>💡 スマホ1台での合わせ方:</b><br>
-      ① 上の「📺 縦長スリム小窓」を開いてホワサバへ移動。<br>
-      ② 小窓を画面左上に置いても、ホワサバの時計が隠れません！<br>
-      ③ ホワサバと小窓を見比べて「ズレ」を目視確認。<br>
-      ④ アプリに戻り、上の [+-0.1s] や [:00s] でピッタリ合わせます！
+      ① 上の「📺 スリム小窓」を開いてホワサバへ移動。<br>
+      ② 最上段にデカ文字時計が配置されているため、ホワサバ時計の真横で一目瞭然！<br>
+      ③ 縦幅がスリムになったので下のゲーム画面を邪魔しません。<br>
+      ④ ズレを確認したら、アプリに戻って [+-0.1s] や [:00s] でピタッと同期！
     </div>
   </div>
 
-  <!-- 縦長スリム (3:4 比率: 横200px × 縦267px) Canvas & Video -->
-  <canvas id="pip-canvas" width="200" height="267" style="display: none;"></canvas>
+  <!-- 最適化スリムサイズ (横260px × 縦165px) Canvas & Video -->
+  <canvas id="pip-canvas" width="260" height="165" style="display: none;"></canvas>
   <video id="pip-video" playsinline muted autoplay style="position: fixed; bottom: 0; right: 0; width: 2px; height: 2px; opacity: 0.05; pointer-events: none; z-index: -1;"></video>
 
   <script>
@@ -223,14 +223,12 @@
       uiOffsetBadge.textContent = `現在の補正値: ${sign}${sec}s (${syncOffsetMs}ms)`;
     }
 
-    // 手動微調整 (+-0.1s, +-1.0s)
     function adjustOffset(deltaMs) {
       syncOffsetMs += deltaMs;
       updateBadge();
       drawHUD();
     }
 
-    // 秒数一発ジャンプ
     function jumpToSecond(targetSec) {
       const rawNow = new Date();
       const currentSecWithMs = rawNow.getUTCSeconds() + (rawNow.getUTCMilliseconds() / 1000);
@@ -248,7 +246,7 @@
       drawHUD();
     }
 
-    // --- 縦長スリム小窓 (200x267) HUD描画エンジン ---
+    // --- 最適化スリム小窓 (260x165) HUD描画エンジン ---
     function drawHUD() {
       if (!ctx) return;
       const now = getNow();
@@ -270,50 +268,41 @@
       ctx.lineWidth = isBeat ? 8 : 4;
       ctx.strokeRect(3, 3, w - 6, h - 6);
 
-      // 3. 上段タイトル ＆ ビートランプ
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = 'bold 16px sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText('⏱️ WOS', 14, 28);
+      // 3. 【最上段・主役】特大デカ文字「MM:SS.s」
+      // ホワサバ時計の真横に一直線に並ぶ最上段配置！
+      const mmssText = formatMinutesSeconds(now);
+      ctx.fillStyle = isBeat ? '#fef08a' : '#00f0ff';
+      ctx.font = '900 50px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(mmssText, w / 2, 54);
 
-      // ビートインジケーターランプ
+      // 4. 2段目: UTC 時刻 ＆ ビートランプ
+      const hStr = 'UTC ' + String(now.getUTCHours()).padStart(2, '0') + '時';
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = 'bold 16px monospace';
+      ctx.fillText(hStr, w / 2, 82);
+
+      // ビートインジケーターランプ (右上に配置)
       ctx.beginPath();
-      ctx.arc(w - 20, 22, 7, 0, Math.PI * 2);
+      ctx.arc(w - 20, 20, 7, 0, Math.PI * 2);
       ctx.fillStyle = isBeat ? '#ffb700' : '#1e293b';
       ctx.fill();
 
-      // 4. 時 (HH) の控えめ表示
-      const hStr = 'UTC ' + String(now.getUTCHours()).padStart(2, '0') + '時';
-      ctx.fillStyle = '#64748b';
-      ctx.font = 'bold 16px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText(hStr, w / 2, 60);
-
-      // 5. 【主役】特大デカ文字「MM:SS.s」 (中央)
-      const mmssText = formatMinutesSeconds(now);
-      ctx.fillStyle = isBeat ? '#fef08a' : '#00f0ff';
-      ctx.font = '900 40px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText(mmssText, w / 2, 135);
-
-      // 6. 秒針アニメーションバー (1秒周期で伸びるプログレスバー)
+      // 5. 3段目: 秒針プログレスバー (1秒周期)
       const progress = ms / 1000;
       ctx.fillStyle = '#1e293b';
-      ctx.fillRect(16, 160, w - 32, 6);
+      ctx.fillRect(16, 96, w - 32, 5);
       ctx.fillStyle = isBeat ? '#ffb700' : '#00ff88';
-      ctx.fillRect(16, 160, (w - 32) * progress, 6);
+      ctx.fillRect(16, 96, (w - 32) * progress, 5);
 
-      // 7. 下段：現在の補正値ステータス
+      // 6. 最下段: 現在の補正値ステータス
       const secVal = (syncOffsetMs / 1000).toFixed(1);
       const signStr = syncOffsetMs > 0 ? '+' : '';
       ctx.fillStyle = syncOffsetMs === 0 ? '#64748b' : '#00ff88';
-      ctx.font = 'bold 17px monospace';
-      ctx.fillText(`補正: ${signStr}${secVal}s`, w / 2, 210);
+      ctx.font = 'bold 19px monospace';
+      ctx.fillText(`補正: ${signStr}${secVal}s`, w / 2, 135);
 
-      ctx.fillStyle = '#475569';
-      ctx.font = '13px sans-serif';
-      ctx.fillText('ホワサバと見比べ用', w / 2, 242);
-
+      // 7. 手動フレーム送信
       if (pipTrack && typeof pipTrack.requestFrame === 'function') {
         try { pipTrack.requestFrame(); } catch (e) {}
       }
@@ -351,10 +340,10 @@
 
     video.addEventListener('webkitpresentationmodechanged', () => {
       isPipActive = (video.webkitPresentationMode === 'picture-in-picture');
-      btnPip.textContent = isPipActive ? '📺 小窓を閉じる' : '📺 縦長スリム小窓 (PiP) を開く';
+      btnPip.textContent = isPipActive ? '📺 小窓を閉じる' : '📺 スリム小窓 (PiP) を開く';
     });
 
-    // おまけ: 小窓 [⏸] を押した瞬間の自動同期も裏で残しておく (上級者向け)
+    // おまけ: 小窓 [⏸] を押した瞬間の自動同期も裏で残しておく
     video.addEventListener('pause', async () => {
       const rawNow = new Date();
       const currentSecWithMs = rawNow.getUTCSeconds() + (rawNow.getUTCMilliseconds() / 1000);
